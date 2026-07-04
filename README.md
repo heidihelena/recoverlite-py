@@ -31,16 +31,25 @@ diagnosands within 4× combined MCSE.
 | Two-arm trial (baseline, additive measurement error, MAR/MCAR attrition, noncompliance) | ✅ | ✅ |
 | Complete-case linear model | ✅ | ✅ |
 | MI baseline-adjusted estimator (Rubin + Barnard-Rubin) | ✅ | ✅ |
-| Cluster trial, LMM Wald-z | ✅ | ✅ (`pip install recoverlite[mixed]`) |
+| Cluster trial, LMM (Wald-z / Satterthwaite / Kenward–Roger) | ✅ lme4 + lmerTest + pbkrtest | ✅ internal exact REML fitter |
 | Cluster-level t-test | ✅ | ✅ |
-| LMM Satterthwaite / Kenward–Roger inference | ✅ | ❌ R-only (no Python equivalent) |
 | Fragility curves (effect + nuisance) | ✅ | ✅ |
+
+The mixed-model machinery is self-contained (numpy/scipy only — no
+statsmodels): a closed-form REML fitter for the random-intercept model
+with Satterthwaite df (observed REML Hessian, the lmerTest algorithm)
+and Kenward–Roger adjusted covariance + df (expected REML information,
+the pbkrtest algorithm). Because these methods are deterministic given
+data, they are validated against lmerTest/pbkrtest **to numerical
+precision** (rel. ≤ 1e-4) on shared fixture datasets — balanced,
+unbalanced, near-boundary, and null — in
+[`tests/data/`](tests/data/), a stronger contract than the MCSE-level
+simulation cross-checks.
 
 ## Install
 
 ```bash
-pip install recoverlite            # core (numpy + scipy)
-pip install "recoverlite[mixed]"   # + statsmodels for mixed models
+pip install recoverlite            # numpy + scipy only
 ```
 
 Not yet on PyPI? Install from source:

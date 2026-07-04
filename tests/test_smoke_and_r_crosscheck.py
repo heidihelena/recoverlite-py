@@ -150,6 +150,42 @@ def test_crosscheck_against_r_worked_example():
     assert abs(eb.value) < 4 * eb.mcse + 0.02
 
 
+def test_crosscheck_cluster_satterthwaite_against_r():
+    """Protocol-level agreement with the R package's archived example
+    3.2 'LMM Satterthwaite' analysis (2000 sims, seed 20260703):
+    test size 0.047 (0.0047) at Null-declared; power 0.745 (0.0097) and
+    coverage 0.955 (0.0046) at Target-declared; power 0.425 (0.0111) at
+    Target-pessimistic (ICC 0.15)."""
+    from recoverlite import cluster_trial
+
+    d = declare_recovery(
+        target=target_estimand("ITT pupil effect", "student SMD",
+                               sesoi=0.4),
+        data_strategy=cluster_trial(16, 30, icc=0.05, icc_pessimistic=0.15),
+        answer_strategy=planned_analysis(
+            "lmm_random_intercept", "y_observed ~ treatment + (1 | cluster)",
+            inference="satterthwaite"))
+    res = recovery_test(d, sims=600, seed=3)
+
+    def pair(row, name):
+        dd = get(res, row, name)
+        return (dd.value, dd.mcse)
+
+    _assert_agrees(pair("null_declared", "rejection_rate"),
+                   (0.047, 0.0047), "cluster test size (Satterthwaite)")
+    _assert_agrees(pair("target_declared", "rejection_rate"),
+                   (0.745, 0.0097), "cluster power (Satterthwaite)")
+    _assert_agrees(pair("target_declared", "coverage"),
+                   (0.955, 0.0046), "cluster coverage (Satterthwaite)")
+    _assert_agrees(pair("target_pessimistic", "rejection_rate"),
+                   (0.425, 0.0111), "cluster power at ICC 0.15")
+    # singular fits occur at ICC 0.05 and are recorded as degenerate,
+    # not counted (pre-specified default)
+    fc = res.runs["target_declared"]["diagnosands"]["failure_classes"]
+    assert fc["degenerate"] > 0
+    assert get(res, "target_declared", "model_failure").value < 0.01
+
+
 def test_crosscheck_mcar_test_size():
     d = design_31(missingness=attrition_model(0.15, mechanism="mcar"))
     res = recovery_test(d, sims=800, seed=2)

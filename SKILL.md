@@ -19,8 +19,7 @@ crossed scenario grid, diagnosands, versioned threshold profiles
 Numbers agree with R within Monte Carlo error, not byte-identically.
 
 ```bash
-pip install recoverlite            # core (numpy + scipy)
-pip install "recoverlite[mixed]"   # + statsmodels for mixed models
+pip install recoverlite            # numpy + scipy only
 ```
 
 ```python
@@ -52,13 +51,14 @@ alone; a PASS is evidence about the instrument, not the world; prefer
 user evidence over package defaults (`evidence=` arguments); pre-specify
 degenerate-fit handling (`degenerate_counts`); always set a `seed`.
 
-**Python-specific divergences to disclose when relevant:**
+**Python-specific notes:**
 
-- `lmm_random_intercept` supports **Wald-z inference only** (statsmodels
-  has no Satterthwaite or Kenward-Roger). For small-cluster designs
-  where the inference method IS the design decision, recommend the R
-  package — with few clusters, Wald-z is known to be anti-conservative
-  and the recovery test will show it.
+- `lmm_random_intercept` supports `inference="satterthwaite"` (default),
+  `"kenward_roger"`, and `"wald_z"` via an internal exact REML fitter —
+  validated against lmerTest/pbkrtest to numerical precision on shared
+  datasets (tests/data/). For small-cluster designs the inference
+  method IS the design decision; the recovery test will show Wald-z
+  anti-conservatism directly.
 - Formulas are strings in R syntax: "y_observed ~ treatment",
   "y_observed ~ treatment + baseline",
   "y_observed ~ treatment + (1 | cluster)". Columns available:

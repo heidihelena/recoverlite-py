@@ -150,13 +150,12 @@ def fit_linear_model(analysis, data) -> dict:
 
 
 def fit_lmm_random_intercept(analysis, data) -> dict:
-    try:
-        import statsmodels.api as sm
-        from statsmodels.tools.sm_exceptions import ConvergenceWarning
-    except ImportError as e:
-        raise ImportError(
-            "estimator 'lmm_random_intercept' requires statsmodels; "
-            "install recoverlite[mixed]") from e
+    """Random-intercept LMM via the internal exact REML fitter (lmm.py),
+    with Wald-z, Satterthwaite, or Kenward-Roger inference — validated
+    against lmerTest/pbkrtest to numerical precision on shared datasets
+    (tests/data/lmm_reference.json)."""
+    from .lmm import fit_reml, infer_contrast
+
     out = dict(_EMPTY)
     try:
         mask = data["retained"]
@@ -164,33 +163,17 @@ def fit_lmm_random_intercept(analysis, data) -> dict:
         y = np.asarray(data[terms["outcome"]], dtype=float)[mask]
         X = _design_matrix(terms, data, mask)
         groups = np.asarray(data[terms["random_intercept"]])[mask]
-        caught: list[warnings.WarningMessage] = []
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            model = sm.MixedLM(y, X, groups=groups)
-            fit = model.fit(reml=True)
-        msgs = [str(w.message) for w in caught]
-        out["warned"] = len(msgs) > 0
-        out["nonconverged"] = any(
-            isinstance(w.category, type) and
-            issubclass(w.category, ConvergenceWarning) and
-            "boundary" not in str(w.message).lower() and
-            "singular" not in str(w.message).lower()
-            for w in caught) or not fit.converged
-        # Degenerate: random-intercept variance at (or numerically on)
-        # the zero boundary — the singular-fit analogue of lme4.
-        re_var = float(np.asarray(fit.cov_re)[0, 0])
-        resid_var = float(fit.scale)
-        out["degenerate"] = re_var <= 1e-6 * max(resid_var, 1e-12) or any(
-            "boundary" in m.lower() or "singular" in m.lower() for m in msgs)
-
+        fit = fit_reml(y, X, groups)
+        out["nonconverged"] = not fit.converged
+        out["degenerate"] = fit.degenerate
+        out["warned"] = fit.degenerate  # boundary notice, lme4-style
+        n_groups = len(np.unique(groups))
         idx = 1 + terms["fixed"].index("treatment")
-        est = float(fit.fe_params[idx])
-        s = float(np.sqrt(np.asarray(fit.cov_params())[idx, idx]))
-        zcrit = stats.norm.ppf(1 - analysis.alpha / 2)
-        out.update(estimate=est, se=s,
-                   p=float(2 * stats.norm.sf(abs(est / s))),
-                   ci_lo=est - zcrit * s, ci_hi=est + zcrit * s)
+        inf = infer_contrast(fit, y, X, idx, analysis.alpha,
+                             analysis.inference,
+                             fallback_df=max(n_groups - 2, 1))
+        out.update(estimate=inf["estimate"], se=inf["se"], p=inf["p"],
+                   ci_lo=inf["ci_lo"], ci_hi=inf["ci_hi"])
     except Exception:
         out = dict(_EMPTY)
         out["fatal"] = True

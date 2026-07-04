@@ -180,7 +180,7 @@ def attrition_model(rate: float, mechanism: str = "differential",
 
 _ESTIMATORS = ("linear_model", "lmm_random_intercept", "cluster_mean_ttest",
                "mi_baseline_adjusted")
-_INFERENCE = ("wald_z",)  # Satterthwaite / Kenward-Roger are R-only
+_INFERENCE = ("satterthwaite", "kenward_roger", "wald_z")
 
 
 @dataclass(frozen=True)
@@ -192,16 +192,19 @@ class PlannedAnalysis:
     "y_observed ~ treatment + (1 | cluster)". Available columns:
     y_observed, treatment, baseline, cluster.
 
-    Divergence from the R implementation: `lmm_random_intercept`
-    supports Wald-z inference only (statsmodels has no Satterthwaite or
-    Kenward-Roger); those inference methods are available in the R
-    package.
+    For `lmm_random_intercept`, `inference` selects "satterthwaite"
+    (default, matching the R implementation's default), "kenward_roger",
+    or "wald_z". Satterthwaite uses the observed REML Hessian (as
+    lmerTest does); Kenward-Roger uses the expected REML information and
+    the KR-adjusted covariance (as pbkrtest does). Both are validated
+    against R to numerical precision on shared datasets
+    (tests/data/lmm_reference.json).
     """
 
     estimator: str
     formula: str
     alpha: float = 0.05
-    inference: str = "wald_z"
+    inference: str = "satterthwaite"
     m_imputations: int = 20
     degenerate_counts: bool = False
 
@@ -212,10 +215,7 @@ class PlannedAnalysis:
             raise ValueError("`alpha` must be in (0, 1)")
         if self.estimator == "lmm_random_intercept" and \
                 self.inference not in _INFERENCE:
-            raise ValueError(
-                "Python mirror supports inference='wald_z' only; "
-                "Satterthwaite and Kenward-Roger inference are available "
-                "in the R implementation (github.com/heidihelena/recoverlite)")
+            raise ValueError(f"`inference` must be one of {_INFERENCE}")
         if self.m_imputations < 2:
             raise ValueError("`m_imputations` must be >= 2")
         # parse the formula once; raises on malformed input
@@ -244,7 +244,8 @@ def parse_formula(formula: str) -> dict:
 
 
 def planned_analysis(estimator: str, formula: str, alpha: float = 0.05,
-                     inference: str = "wald_z", m_imputations: int = 20,
+                     inference: str = "satterthwaite",
+                     m_imputations: int = 20,
                      degenerate_counts: bool = False) -> PlannedAnalysis:
     return PlannedAnalysis(estimator, formula, alpha, inference,
                            int(m_imputations), degenerate_counts)

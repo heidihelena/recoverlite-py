@@ -33,16 +33,21 @@ def test_attrition_model_mcar_zeroes_slopes():
     assert m.baseline_slope_treated == 0.0
 
 
-def test_planned_analysis_formula_parse_and_inference_guard():
+def test_planned_analysis_formula_parse_and_inference():
     pa = planned_analysis("lmm_random_intercept",
                           "y_observed ~ treatment + (1 | cluster)")
     assert pa.terms["random_intercept"] == "cluster"
     assert pa.terms["fixed"] == ["treatment"]
-    # Satterthwaite / KR are R-only; the error must say so
-    with pytest.raises(ValueError, match="R implementation"):
+    assert pa.inference == "satterthwaite"  # default mirrors R
+    for inf in ("satterthwaite", "kenward_roger", "wald_z"):
+        assert planned_analysis(
+            "lmm_random_intercept",
+            "y_observed ~ treatment + (1 | cluster)",
+            inference=inf).inference == inf
+    with pytest.raises(ValueError, match="inference"):
         planned_analysis("lmm_random_intercept",
                          "y_observed ~ treatment + (1 | cluster)",
-                         inference="satterthwaite")
+                         inference="bogus")
 
 
 def test_declare_recovery_records_omissions():
