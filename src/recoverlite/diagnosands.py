@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ._utils import mcse_boot, mcse_mean, mcse_prop
+from ._utils import mcse_boot, mcse_mean, mcse_prop, wilson_upper
 
 
 @dataclass
@@ -27,6 +27,7 @@ class Diagnosand:
     n_contributing: int
     unstable: bool = False
     note: str = ""
+    upper: float = float("nan")
 
 
 def compute_diagnosands(sim: dict, theta: float, unit: float, thresholds,
@@ -81,7 +82,8 @@ def compute_diagnosands(sim: dict, theta: float, unit: float, thresholds,
         if n_sig > 0:
             sign_theta = 1.0 if theta > 0 else -1.0
             wrong = np.sign(est[sig]) != sign_theta
-            ts = float(wrong.mean())
+            n_wrong = int(wrong.sum())
+            ts = n_wrong / n_sig
 
             def ts_stat(idx):
                 s2, e2 = sig[idx], est[idx]
@@ -89,11 +91,16 @@ def compute_diagnosands(sim: dict, theta: float, unit: float, thresholds,
                     return float("nan")
                 return float((np.sign(e2[s2]) != sign_theta).mean())
 
+            # One-sided Wilson upper bound: for a zero (or any) sign-flip
+            # count the verdict checks the Type S threshold against this.
+            ts_upper = wilson_upper(n_wrong, n_sig)
             rows.append(Diagnosand(
                 "type_s", ts, mcse_boot(ts_stat, n_ok, rng), n_sig,
-                unstable=n_sig < min_n,
+                unstable=n_sig < min_n, upper=ts_upper,
                 note=(f"only {n_sig} significant simulations (< {min_n}); "
-                      "unstable" if n_sig < min_n else "bootstrap MCSE")))
+                      "unstable" if n_sig < min_n else
+                      f"bootstrap MCSE; {n_wrong}/{n_sig} sign flips, "
+                      f"one-sided 95% Wilson upper {ts_upper:.4f}")))
 
             tm = float(np.mean(np.abs(est[sig]))) / abs(theta)
 

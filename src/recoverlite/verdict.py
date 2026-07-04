@@ -103,12 +103,25 @@ def evaluate_criteria(diag: dict, row_type: str, thr: Thresholds,
                       unstable=False, note=cov_note))
 
     if not estimation and row_type == "target":
-        for nm, lim in (("type_s", thr.type_s), ("type_m", thr.type_m)):
-            d = g(nm)
-            crits.append(dict(criterion=nm, d=d,
-                              requirement=f"<= {lim:g}",
-                              margin=lim - d.value,
-                              unstable=d.unstable, note=""))
+        # Type S: for a zero sign-flip count the point estimate is 0 but the
+        # run has not ruled out a higher rate, so the threshold is checked
+        # against the one-sided Wilson upper bound (section 2.4; tech C).
+        ts = g("type_s")
+        ts_upper = getattr(ts, "upper", float("nan"))
+        use_ts_upper = (math.isfinite(ts.value) and ts.value == 0
+                        and math.isfinite(ts_upper))
+        ts_check = ts_upper if use_ts_upper else ts.value
+        crits.append(dict(
+            criterion="type_s", d=ts, requirement=f"<= {thr.type_s:g}",
+            margin=thr.type_s - ts_check, unstable=ts.unstable,
+            note=(f"threshold checked against one-sided 95% Wilson upper "
+                  f"{ts_upper:.4f} (point estimate 0)" if use_ts_upper
+                  else "")))
+        tm = g("type_m")
+        crits.append(dict(criterion="type_m", d=tm,
+                          requirement=f"<= {thr.type_m:g}",
+                          margin=thr.type_m - tm.value,
+                          unstable=tm.unstable, note=""))
 
     if estimation:
         d = g("estimand_drift")
@@ -169,8 +182,19 @@ def _verdict_under(result, thr: Thresholds) -> dict:
             found += [(nm, c) for c in evs if cond(c)]
         return found
 
-    failed_declared = pick("declared",
-                           lambda c: c.passed is False)
+    # A failing margin is STABLE (resolvable at this S) only when its
+    # magnitude exceeds mcse_margin MCSEs -- the same band that governs a
+    # PASS, applied on the failing side. The stability guard takes
+    # precedence in BOTH directions (section 2.4): only a STABLE declared
+    # failure yields FAIL; a within-band declared failure is capped at RISK.
+    def stable_fail(c):
+        return (math.isfinite(c.mcse)
+                and (-c.margin) > thr.mcse_margin * c.mcse)
+
+    failed_declared_stable = pick(
+        "declared", lambda c: c.passed is False and stable_fail(c))
+    failed_declared_within = pick(
+        "declared", lambda c: c.passed is False and not stable_fail(c))
     failed_pess = pick("pessimistic", lambda c: c.passed is False)
     narrow = pick(None, lambda c: c.passed is True and not c.stable)
     unstable = pick(None, lambda c: c.unstable)
@@ -183,38 +207,51 @@ def _verdict_under(result, thr: Thresholds) -> dict:
         smallest = (f"{c.criterion} under '{nm}' "
                     f"(signed margin {c.margin:+.4f})")
 
-    if failed_declared:
+    if failed_declared_stable:
         v = "FAIL"
-        binding = "Under declared-nuisance rows, " + "; ".join(
+        binding = ("Under declared-nuisance rows, " + "; ".join(
             f"{c.criterion} = {c.value:.3g} under '{nm}' violates "
-            f"{c.requirement}" for nm, c in failed_declared) + "."
-    elif failed_pess:
-        v = "RISK"
-        binding = ("Thresholds hold under declared-nuisance rows but fail "
-                   "under pessimistic rows: " + "; ".join(
-                       f"{c.criterion} = {c.value:.3g} under '{nm}' violates "
-                       f"{c.requirement}" for nm, c in failed_pess) + ".")
-    elif missing:
-        v = "RISK"
-        binding = (f"Required scenario rows not evaluated: "
-                   f"{', '.join(missing)}. A PASS requires all rows the "
-                   f"'{thr.profile}' profile requires.")
-    elif narrow or unstable:
+            f"{c.requirement}" for nm, c in failed_declared_stable)
+            + f" (each margin exceeds {thr.mcse_margin:g} MCSE: a stable "
+              "failure).")
+    elif failed_declared_within or failed_pess or missing or narrow \
+            or unstable:
         v = "RISK"
         parts = []
-        if narrow:
-            parts.append("; ".join(
-                f"{c.criterion} margin under '{nm}' is within "
-                f"{thr.mcse_margin:g} MCSE of its threshold"
-                for nm, c in narrow))
-        if unstable:
-            parts.append("; ".join(
-                f"{c.criterion} under '{nm}' is unstable "
-                f"({c.n_contributing} contributing simulations)"
-                for nm, c in unstable))
-        binding = ("All point estimates meet the thresholds, but simulation "
-                   "precision is insufficient to confirm a PASS: "
-                   + ". ".join(parts) + ". Increase `sims`.")
+        if failed_declared_within:
+            parts.append(
+                "A declared-nuisance threshold is not met, but the margin is "
+                f"within {thr.mcse_margin:g} MCSE, so the stability guard caps "
+                "the verdict at RISK rather than FAIL (resolve with more sims "
+                "or accept as unresolved): " + "; ".join(
+                    f"{c.criterion} = {c.value:.3g} under '{nm}' violates "
+                    f"{c.requirement}" for nm, c in failed_declared_within))
+        if failed_pess:
+            parts.append(
+                "Thresholds hold under declared-nuisance rows but fail under "
+                "pessimistic rows: " + "; ".join(
+                    f"{c.criterion} = {c.value:.3g} under '{nm}' violates "
+                    f"{c.requirement}" for nm, c in failed_pess))
+        if missing:
+            parts.append(
+                f"Required scenario rows not evaluated: {', '.join(missing)}. "
+                f"A PASS requires all rows the '{thr.profile}' profile "
+                "requires")
+        if narrow or unstable:
+            sub = []
+            if narrow:
+                sub.append("; ".join(
+                    f"{c.criterion} margin under '{nm}' is within "
+                    f"{thr.mcse_margin:g} MCSE of its threshold"
+                    for nm, c in narrow))
+            if unstable:
+                sub.append("; ".join(
+                    f"{c.criterion} under '{nm}' is unstable "
+                    f"({c.n_contributing} contributing simulations)"
+                    for nm, c in unstable))
+            parts.append("Simulation precision is insufficient to confirm a "
+                         "PASS: " + ". ".join(sub) + ". Increase `sims`")
+        binding = ". ".join(parts) + "."
     else:
         v = "PASS"
         binding = None

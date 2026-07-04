@@ -6,6 +6,7 @@ import math
 import pytest
 
 from recoverlite import recovery_thresholds, verdict
+from recoverlite._utils import wilson_upper
 from recoverlite.diagnosands import Diagnosand
 from recoverlite.scenarios import Scenario
 
@@ -28,7 +29,9 @@ def make_diag(row_type="target", rejection=None, rej_mcse=0.005,
         Diagnosand("type_s", type_s if is_target else nan,
                    cond_mcse if is_target else nan,
                    n_sig if is_target else 0,
-                   unstable=unstable_cond if is_target else False),
+                   unstable=unstable_cond if is_target else False,
+                   upper=(wilson_upper(0, n_sig)
+                          if is_target and type_s == 0 else nan)),
         Diagnosand("type_m", type_m if is_target else nan,
                    cond_mcse if is_target else nan,
                    n_sig if is_target else 0,
@@ -106,6 +109,32 @@ def test_margin_within_two_mcse_is_risk():
                                         rej_mcse=0.009)))
     assert v.verdict == "RISK"
     assert "MCSE" in v.binding
+
+
+def test_declared_failure_within_two_mcse_capped_at_risk():
+    # power 0.798 vs 0.80, MCSE 0.009: fails the point estimate but the
+    # margin (-0.002) is within 2 MCSE, so the guard caps it at RISK.
+    v = verdict(FakeResult(td=make_diag("target", rejection=0.798,
+                                        rej_mcse=0.009)))
+    assert v.verdict == "RISK"
+    assert "caps the verdict at RISK" in v.binding
+
+
+def test_declared_failure_beyond_two_mcse_is_stable_fail():
+    # power 0.78 vs 0.80, MCSE 0.005: margin -0.02 is 4 MCSE => FAIL.
+    v = verdict(FakeResult(td=make_diag("target", rejection=0.78,
+                                        rej_mcse=0.005)))
+    assert v.verdict == "FAIL"
+    assert "stable failure" in v.binding
+
+
+def test_type_s_zero_count_checked_against_wilson_bound():
+    # 0 flips out of 210 sig sims: Wilson upper ~0.0127 > 0.01 => not PASS.
+    v = verdict(FakeResult(td=make_diag("target", type_s=0, n_sig=210)))
+    assert v.verdict in ("RISK", "FAIL")
+    # many sig sims: Wilson upper well under 0.01 => PASS.
+    v2 = verdict(FakeResult(td=make_diag("target", type_s=0, n_sig=1800)))
+    assert v2.verdict == "PASS"
 
 
 def test_overcoverage_flagged_not_failed():

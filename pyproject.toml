@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "recoverlite"
-version = "0.1.0"
+version = "0.2.0"
 description = "Pre-data recovery tests for planned study designs: simulate whether a planned design-analysis pair can recover its target estimand, with PASS/RISK/FAIL verdicts under versioned threshold profiles."
 readme = "README.md"
 license = { text = "Apache-2.0" }

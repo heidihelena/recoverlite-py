@@ -4,7 +4,7 @@ message: >-
   paper it implements (see preferred-citation).
 type: software
 title: "recoverlite (Python): Pre-Data Recovery Tests for Planned Study Designs"
-version: 0.1.0
+version: 0.2.0
 date-released: 2026-07-04
 doi: 10.5281/zenodo.21195922
 license: Apache-2.0
