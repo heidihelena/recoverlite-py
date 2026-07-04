@@ -1,0 +1,40 @@
+{
+  "title": "recoverlite (Python): Pre-Data Recovery Tests for Planned Study Designs",
+  "description": "Protocol-identical Python mirror of the recoverlite R package: a prototype implementation of the pre-data recovery test, a standardized simulation protocol for evaluating whether a planned design-analysis pair can recover its target estimand before data collection. Same declaration API, crossed scenario grid, diagnosands (including the exact decomposition of target bias into estimator bias and estimand drift), versioned threshold profiles, and PASS/RISK/FAIL verdict rule as the R implementation; simulated results agree within Monte Carlo error, and the mixed-model Satterthwaite/Kenward-Roger inference is validated against lmerTest/pbkrtest to numerical precision on shared datasets. Pure numpy/scipy. Available on PyPI as 'recoverlite'. Companion software to the methods paper 'Recovery before data: pre-data simulation diagnosis of planned study designs' (Andersen, 2026, working paper).",
+  "creators": [
+    {
+      "name": "Andersén, Heidi Helena",
+      "orcid": "0000-0001-5923-5865"
+    }
+  ],
+  "license": "Apache-2.0",
+  "upload_type": "software",
+  "language": "eng",
+  "keywords": [
+    "study design",
+    "power analysis",
+    "simulation",
+    "estimands",
+    "estimand drift",
+    "design diagnosis",
+    "preregistration",
+    "Monte Carlo",
+    "research methods",
+    "metascience",
+    "Python",
+    "Kenward-Roger",
+    "Satterthwaite"
+  ],
+  "related_identifiers": [
+    {
+      "relation": "isSupplementTo",
+      "identifier": "https://github.com/heidihelena/recoverlite",
+      "resource_type": "software"
+    },
+    {
+      "relation": "isIdenticalTo",
+      "identifier": "https://pypi.org/project/recoverlite/",
+      "resource_type": "software"
+    }
+  ]
+}

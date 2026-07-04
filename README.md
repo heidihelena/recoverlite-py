@@ -1,6 +1,8 @@
 # recoverlite (Python)
 
 [![CI](https://github.com/heidihelena/recoverlite-py/actions/workflows/ci.yaml/badge.svg)](https://github.com/heidihelena/recoverlite-py/actions/workflows/ci.yaml)
+[![PyPI](https://img.shields.io/pypi/v/recoverlite.svg)](https://pypi.org/project/recoverlite/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21195922.svg)](https://doi.org/10.5281/zenodo.21195922)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 **Pre-data recovery tests for planned study designs** — the Python

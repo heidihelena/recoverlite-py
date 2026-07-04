@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: >-
+  If you use recoverlite, please cite both the software and the methods
+  paper it implements (see preferred-citation).
+type: software
+title: "recoverlite (Python): Pre-Data Recovery Tests for Planned Study Designs"
+version: 0.1.0
+date-released: 2026-07-04
+doi: 10.5281/zenodo.21195922
+license: Apache-2.0
+repository-code: https://github.com/heidihelena/recoverlite-py
+url: https://pypi.org/project/recoverlite/
+authors:
+  - family-names: Andersén
+    given-names: Heidi Helena
+    orcid: https://orcid.org/0000-0001-5923-5865
+keywords:
+  - study design
+  - power analysis
+  - simulation
+  - estimands
+  - design diagnosis
+  - preregistration
+  - Monte Carlo
+  - metascience
+preferred-citation:
+  type: unpublished
+  title: "Recovery before data: pre-data simulation diagnosis of planned study designs"
+  year: 2026
+  authors:
+    - family-names: Andersén
+      given-names: Heidi Helena
+      orcid: https://orcid.org/0000-0001-5923-5865
+  notes: Working paper; preprint forthcoming.
