@@ -8,7 +8,7 @@ error, not byte-identically. Satterthwaite and Kenward-Roger mixed-model
 inference are available only in the R implementation.
 """
 
-__version__ = "0.0.1.dev1"
+__version__ = "0.1.0"
 
 from .constructors import (
     AttritionModel,
