@@ -44,3 +44,7 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # re-published releases (e.g. to fire the Zenodo webhook) must
+          # not fail on the already-uploaded version
+          skip-existing: true
