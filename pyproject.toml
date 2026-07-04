@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "recoverlite"
+version = "0.0.1.dev1"
+description = "Pre-data recovery tests for planned study designs: simulate whether a planned design-analysis pair can recover its target estimand, with PASS/RISK/FAIL verdicts under versioned threshold profiles."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+authors = [
+  { name = "Heidi Helena Andersen", email = "andersenheidihelena@gmail.com" },
+]
+keywords = [
+  "study-design", "power-analysis", "simulation", "estimands",
+  "preregistration", "monte-carlo", "research-methods", "metascience",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering",
+]
+dependencies = [
+  "numpy>=1.24",
+  "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+mixed = ["statsmodels>=0.14"]
+test = ["pytest>=7"]
+
+[project.urls]
+Homepage = "https://github.com/heidihelena/recoverlite-py"
+"R implementation" = "https://github.com/heidihelena/recoverlite"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
