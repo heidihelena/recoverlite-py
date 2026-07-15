@@ -9,14 +9,10 @@
 mirror of the [R package](https://github.com/heidihelena/recoverlite).
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)"
-            srcset="assets/hero-workflow-dark.svg">
-    <img
+  <img
       src="assets/hero-workflow.svg"
       alt="recoverlite workflow: a declared design and analysis with declared assumptions is simulated over null, target and perturbed scenarios; simulation diagnostics yield a three-way PASS, RISK or FAIL verdict under versioned thresholds — evidence about the planned design under stated assumptions, not a guarantee of results"
       width="1200">
-  </picture>
 </p>
 
 A planned study can be unable to support its intended inferential claim
