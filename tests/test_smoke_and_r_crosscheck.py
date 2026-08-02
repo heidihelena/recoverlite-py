@@ -164,7 +164,11 @@ def test_crosscheck_cluster_satterthwaite_against_r():
         data_strategy=cluster_trial(16, 30, icc=0.05, icc_pessimistic=0.15),
         answer_strategy=planned_analysis(
             "lmm_random_intercept", "y_observed ~ treatment + (1 | cluster)",
-            inference="satterthwaite"))
+            inference="satterthwaite",
+            # The archived R example was produced under the pre-0.3
+            # default (degenerate fits not counted); the crosscheck must
+            # declare that setting now that the default is True.
+            degenerate_counts=False))
     res = recovery_test(d, sims=600, seed=3)
 
     def pair(row, name):
