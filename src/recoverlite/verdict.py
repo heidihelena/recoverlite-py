@@ -43,8 +43,12 @@ class Verdict:
     verdict_lenient: str | None
     thresholds: Thresholds
     notes: tuple[str, ...] = ()
+    provenance: tuple[str, ...] = ()
 
     def __str__(self):
+        # The label never prints bare: provenance is part of __str__, so
+        # "recoverlite says PASS" cannot be quoted without what it is
+        # conditional on. Structural, not documentation.
         lines = [f"Recovery-test verdict: {self.verdict} "
                  f"(profile '{self.thresholds.profile}')"]
         if self.verdict_strict is not None:
@@ -60,6 +64,9 @@ class Verdict:
             lines.append(f"Binding failure mode: {self.binding}")
         if self.smallest_margin:
             lines.append(f"Smallest signed margin: {self.smallest_margin}")
+        if self.provenance:
+            lines.append("Conditional on:")
+            lines += ["  " + p for p in self.provenance]
         lines.append("The verdict is a decision convention, not a validity "
                      "classification; the full report() must travel with it.")
         return "\n".join(lines)
@@ -282,6 +289,38 @@ def _verdict_under(result, thr: Thresholds) -> dict:
                 smallest_margin=smallest)
 
 
+def _provenance(result) -> tuple[str, ...]:
+    """Condensed provenance the verdict cannot be quoted without."""
+    from . import __version__
+    from .constructors import TwoArmTrial
+
+    thr = result.thresholds
+    d = getattr(result, "design", None)
+    if d is None:
+        return (f"thresholds: '{thr.profile}' [{thr.version}]",
+                "design provenance unavailable on this result object")
+    ds = d.data_strategy
+    a = d.answer_strategy
+    if isinstance(ds, TwoArmTrial):
+        ds_line = f"two-arm trial, {ds.n_per_arm} per arm"
+    else:
+        ds_line = (f"cluster trial, {ds.n_clusters} x {ds.n_per_cluster}, "
+                   f"declared ICC {ds.icc:g}")
+    return (
+        f"estimand: {d.target.estimand} ({d.target.scale}); "
+        f"SESOI {d.target.sesoi:g}",
+        f"design: {ds_line}; analysis: {a.estimator}, {a.formula}, "
+        f"alpha {a.alpha:g}",
+        f"thresholds: '{thr.profile}' [{thr.version}]"
+        + (f"; DEVIATIONS: {', '.join(thr.modified)}" if thr.modified
+           else " (shipped values)"),
+        f"computation: {result.sims} sims/row; seed "
+        + (str(result.seed) if result.seed is not None
+           else "not set (NOT reproducible)")
+        + f"; recoverlite-py {__version__}",
+    )
+
+
 def verdict(result) -> Verdict:
     """Apply the verdict rule; recompute under strict and lenient."""
     thr = result.thresholds
@@ -303,4 +342,4 @@ def verdict(result) -> Verdict:
                    else strict["verdict"],
                    verdict_lenient=None if lenient is None
                    else lenient["verdict"],
-                   thresholds=thr)
+                   thresholds=thr, provenance=_provenance(result))
