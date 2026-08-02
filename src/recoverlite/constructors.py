@@ -178,8 +178,6 @@ def attrition_model(rate: float, mechanism: str = "differential",
                           max_rate, evidence)
 
 
-_ESTIMATORS = ("linear_model", "lmm_random_intercept", "cluster_mean_ttest",
-               "mi_baseline_adjusted")
 _INFERENCE = ("satterthwaite", "kenward_roger", "wald_z")
 
 
@@ -213,8 +211,8 @@ class PlannedAnalysis:
     degenerate_counts: bool = True
 
     def __post_init__(self):
-        if self.estimator not in _ESTIMATORS:
-            raise ValueError(f"`estimator` must be one of {_ESTIMATORS}")
+        from .registry import get_estimator
+        get_estimator(self.estimator)  # raises for unregistered names
         if not (0 < self.alpha < 1):
             raise ValueError("`alpha` must be in (0, 1)")
         if self.estimator == "lmm_random_intercept" and \
@@ -280,10 +278,10 @@ def declare_recovery(target: TargetEstimand,
     if effect == 0:
         raise ValueError("`effect` must be non-zero")
 
+    from .registry import get_estimator
     is_cluster = isinstance(data_strategy, ClusterTrial)
-    est = answer_strategy.estimator
-    if not is_cluster and est in ("lmm_random_intercept",
-                                  "cluster_mean_ttest"):
+    spec = get_estimator(answer_strategy.estimator)
+    if not is_cluster and spec.needs_cluster:
         raise ValueError(
             "Cluster-based estimators require a cluster_trial() data strategy")
 
@@ -297,7 +295,7 @@ def declare_recovery(target: TargetEstimand,
     if not is_cluster:
         omissions.append("Observations are treated as independent "
                          "(no clustering declared).")
-    if is_cluster and est in ("linear_model", "mi_baseline_adjusted"):
+    if is_cluster and not spec.needs_cluster:
         omissions.append("Cluster-randomized data strategy with an "
                          "independent-observations estimator: observations "
                          "are treated as independent by the analysis.")
