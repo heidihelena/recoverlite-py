@@ -123,7 +123,26 @@ def report(result, file: str | None = None) -> str:
             L.append(f"      {r.name:<20s} {val}  n={r.n_contributing:<6d}"
                      + ("  UNSTABLE" if r.unstable else "")
                      + (f"  ({r.note})" if r.note else ""))
-    L += ["", "5. THRESHOLD PROFILE AND SIGNED MARGINS",
+    L += ["", "5. REFERENCE-ANALYSIS CALIBRATION (mandatory pre-check)"]
+    ref = getattr(result, "reference", None)
+    if ref is None:
+        L.append("   Not computed (result predates the calibration check).")
+    else:
+        L.append("   Planned analysis on IDEAL data (reliability 1, no "
+                 "attrition, full compliance, declared structure): "
+                 f"status {ref['status'].upper()}.")
+        if math.isfinite(ref["coverage"]):
+            L.append(f"   Coverage {ref['coverage']:.4f} "
+                     f"[{ref['coverage_mcse']:.4f}] vs nominal "
+                     f"{ref['nominal']:g}; bias {ref['bias']:+.4f} "
+                     f"[{ref['bias_mcse']:.4f}] Delta; "
+                     f"n = {ref['n_ok']} of {ref['sims']}.")
+        if ref["status"] != "attained":
+            L.append("   " + ref["note"])
+            L.append("   Coverage and bias criteria partly measure "
+                     "DGP-versus-analysis mismatch, not design behavior; "
+                     "the verdict is capped at RISK.")
+    L += ["", "6. THRESHOLD PROFILE AND SIGNED MARGINS",
           f"   Profile: '{thr.profile}' [{thr.version}]"
           + (f"  DEVIATIONS from shipped profile: "
              f"{', '.join(thr.modified)}" if thr.modified
@@ -136,7 +155,7 @@ def report(result, file: str | None = None) -> str:
                      f"[MCSE {c.mcse:.4f}]"
                      + ("  UNSTABLE" if c.unstable else "")
                      + (f"  ({c.note})" if c.note else ""))
-    L += ["", f"6. VERDICT: {v.verdict}  (profile '{thr.profile}')"]
+    L += ["", f"7. VERDICT: {v.verdict}  (profile '{thr.profile}')"]
     if v.verdict_strict is not None:
         L.append(f"   Under shipped profiles: strict {v.verdict_strict} | "
                  f"default-family {v.verdict} | lenient {v.verdict_lenient}")
@@ -146,15 +165,16 @@ def report(result, file: str | None = None) -> str:
     if v.smallest_margin:
         L.append(f"   Smallest signed margin: {v.smallest_margin}")
     L.append(f"   Rule: PASS = all required rows pass with margins > "
-             f"{thr.mcse_margin:g} MCSE; RISK = pessimistic-only failure, "
-             "narrow margin, or unstable required diagnosand; FAIL = any "
-             "failure under a declared-nuisance row.")
+             f"{thr.mcse_margin:g} MCSE and the reference analysis attains "
+             "nominal properties; RISK = pessimistic-only failure, narrow "
+             "margin, unstable required diagnosand, or reference-calibration "
+             "deviation; FAIL = any failure under a declared-nuisance row.")
     L.append("   The verdict is a decision convention, not a validity "
              "classification.")
-    L += ["", "7. BINDING FAILURE MODE",
+    L += ["", "8. BINDING FAILURE MODE",
           "   " + (v.binding or
                    "None: all criteria passed with stable margins.")]
-    L += ["", "8. DESIGN CHANGE"]
+    L += ["", "9. DESIGN CHANGE"]
     if v.verdict == "PASS":
         L.append("   No change required under the scenario rows this "
                  "profile requires.")
