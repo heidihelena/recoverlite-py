@@ -17,6 +17,8 @@ import numpy as np
 from scipy import integrate, optimize, stats
 from scipy.special import expit as _plogis
 
+from .registry import RECORD_KEYS, get_estimator, register_estimator
+
 
 def calibrate_dropout_intercept(rate: float, slope: float) -> float:
     """Solve E_B[plogis(alpha + slope B)] = rate for B ~ N(0, 1).
@@ -126,7 +128,7 @@ def _ols(y, X, alpha):
     return beta, se, dfree, sigma2, xtx_inv
 
 
-def fit_linear_model(analysis, data) -> dict:
+def fit_linear_model(analysis, data, rng=None) -> dict:
     out = dict(_EMPTY)
     try:
         mask = data["retained"]
@@ -149,7 +151,7 @@ def fit_linear_model(analysis, data) -> dict:
     return out
 
 
-def fit_lmm_random_intercept(analysis, data) -> dict:
+def fit_lmm_random_intercept(analysis, data, rng=None) -> dict:
     """Random-intercept LMM via the internal exact REML fitter (lmm.py),
     with Wald-z, Satterthwaite, or Kenward-Roger inference — validated
     against lmerTest/pbkrtest to numerical precision on shared datasets
@@ -180,7 +182,7 @@ def fit_lmm_random_intercept(analysis, data) -> dict:
     return out
 
 
-def fit_cluster_mean_ttest(analysis, data) -> dict:
+def fit_cluster_mean_ttest(analysis, data, rng=None) -> dict:
     out = dict(_EMPTY)
     try:
         mask = data["retained"]
@@ -279,13 +281,14 @@ def fit_mi_baseline_adjusted(analysis, data,
 
 
 def fit_analysis(analysis, data, rng: np.random.Generator) -> dict:
-    if analysis.estimator == "linear_model":
-        return fit_linear_model(analysis, data)
-    if analysis.estimator == "lmm_random_intercept":
-        return fit_lmm_random_intercept(analysis, data)
-    if analysis.estimator == "cluster_mean_ttest":
-        return fit_cluster_mean_ttest(analysis, data)
-    return fit_mi_baseline_adjusted(analysis, data, rng)
+    out = get_estimator(analysis.estimator).fit(analysis, data, rng)
+    missing = RECORD_KEYS - set(out)
+    if missing:
+        raise TypeError(
+            f"estimator '{analysis.estimator}' returned a record missing "
+            f"required keys: {', '.join(sorted(missing))} (see "
+            "recoverlite.registry for the record contract)")
+    return out
 
 
 def run_scenario(design, params: dict, sims: int,
@@ -329,3 +332,17 @@ def run_scenario(design, params: dict, sims: int,
         cols["attrition_realized"][i] = 1.0 - ret.mean()
     cols["degenerate_counts"] = analysis.degenerate_counts
     return cols
+
+
+register_estimator(
+    "linear_model", fit_linear_model,
+    description="OLS on the retained rows; t inference")
+register_estimator(
+    "lmm_random_intercept", fit_lmm_random_intercept, needs_cluster=True,
+    description="exact REML random-intercept LMM; Satterthwaite/KR/Wald-z")
+register_estimator(
+    "cluster_mean_ttest", fit_cluster_mean_ttest, needs_cluster=True,
+    description="t test on cluster means")
+register_estimator(
+    "mi_baseline_adjusted", fit_mi_baseline_adjusted,
+    description="normal-model MI + Rubin's rules, Barnard-Rubin df")
