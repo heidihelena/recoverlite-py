@@ -29,7 +29,8 @@ from .constructors import (
     two_arm_trial,
 )
 from .fragility import effect_fragility, nuisance_fragility
-from .recovery_test import RecoveryResult, recovery_test
+from .recovery_test import (RecoveryResult, recovery_test,
+                            reference_calibration)
 from .report import report
 from .stopping import StoppingRecord, recovery_test_stable
 from .thresholds import THRESHOLD_SET_VERSION, Thresholds, recovery_thresholds
@@ -42,6 +43,6 @@ __all__ = [
     "attrition_model", "cluster_trial", "declare_recovery",
     "effect_fragility", "measured_outcome", "nuisance_fragility",
     "planned_analysis", "recovery_test", "recovery_test_stable",
-    "recovery_thresholds", "report", "target_estimand", "two_arm_trial",
-    "verdict",
+    "recovery_thresholds", "reference_calibration", "report",
+    "target_estimand", "two_arm_trial", "verdict",
 ]

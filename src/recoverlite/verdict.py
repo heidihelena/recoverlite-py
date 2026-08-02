@@ -1,9 +1,11 @@
 """The PASS/RISK/FAIL verdict rule (protocol Step 5).
 
 PASS: all required thresholds met under all scenario rows the selected
-profile requires, every margin > mcse_margin MCSEs. RISK: pessimistic-
+profile requires, every margin > mcse_margin MCSEs, and the reference
+analysis attains its nominal properties on ideal data. RISK: pessimistic-
 only failure, any margin within mcse_margin MCSEs, an unstable required
-conditional diagnosand, or missing required rows. FAIL: any required
+conditional diagnosand, missing required rows, or a reference-calibration
+deviation (which caps PASS at RISK). FAIL: any required
 threshold fails under a declared-nuisance row. The verdict is a decision
 convention, not a validity classification, and the full report always
 travels with it.
@@ -255,6 +257,27 @@ def _verdict_under(result, thr: Thresholds) -> dict:
     else:
         v = "PASS"
         binding = None
+
+    # Reference-analysis calibration gate: if the planned analysis does
+    # not attain its nominal properties on IDEAL data, the coverage and
+    # bias criteria partly measure DGP-versus-analysis mismatch rather
+    # than design behavior, so a PASS is not available.
+    ref = getattr(result, "reference", None)
+    if ref is not None and ref["status"] != "attained":
+        if ref["status"] == "not_estimable":
+            msg = ("Reference-analysis calibration not estimable: no "
+                   "successful fits on ideal data. Criteria cannot be "
+                   "attributed to the design; verdict capped at RISK.")
+        else:
+            msg = ("Reference-analysis calibration NOT attained on ideal "
+                   "data (" + "; ".join(ref["deviations"]) + "). Coverage "
+                   "and bias criteria partly measure DGP-versus-analysis "
+                   "mismatch, not design behavior; verdict capped at RISK.")
+        if v == "PASS":
+            v = "RISK"
+            binding = msg
+        else:
+            binding = (binding + " " if binding else "") + msg
     return dict(verdict=v, binding=binding, evaluations=evaluations,
                 smallest_margin=smallest)
 
