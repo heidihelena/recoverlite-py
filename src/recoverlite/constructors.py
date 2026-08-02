@@ -206,7 +206,11 @@ class PlannedAnalysis:
     alpha: float = 0.05
     inference: str = "satterthwaite"
     m_imputations: int = 20
-    degenerate_counts: bool = False
+    # A model that will not fit is a deployment failure, not a nuisance
+    # to condition away: degenerate fits count against the model-failure
+    # threshold unless the researcher declares otherwise (and the
+    # declaration is echoed in the report either way).
+    degenerate_counts: bool = True
 
     def __post_init__(self):
         if self.estimator not in _ESTIMATORS:
@@ -246,7 +250,7 @@ def parse_formula(formula: str) -> dict:
 def planned_analysis(estimator: str, formula: str, alpha: float = 0.05,
                      inference: str = "satterthwaite",
                      m_imputations: int = 20,
-                     degenerate_counts: bool = False) -> PlannedAnalysis:
+                     degenerate_counts: bool = True) -> PlannedAnalysis:
     return PlannedAnalysis(estimator, formula, alpha, inference,
                            int(m_imputations), degenerate_counts)
 
