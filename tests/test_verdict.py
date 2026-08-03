@@ -175,3 +175,23 @@ def test_estimation_profile_uses_target_rows_and_drift():
     assert "estimand_drift" in v.binding
     crits = [c.criterion for c in v.evaluations["target_declared"]]
     assert "power" not in crits
+
+
+def test_verdict_prints_with_provenance():
+    """The printed verdict is structurally inseparable from what it is
+    conditional on: design, analysis, thresholds version, seed."""
+    from recoverlite import (declare_recovery, planned_analysis,
+                             recovery_test, target_estimand, two_arm_trial,
+                             verdict)
+    d = declare_recovery(
+        target=target_estimand("ATE", "mean difference", sesoi=0.4),
+        data_strategy=two_arm_trial(40),
+        answer_strategy=planned_analysis("linear_model",
+                                         "y_observed ~ treatment"))
+    res = recovery_test(d, sims=60, seed=13)
+    text = str(verdict(res))
+    assert "Conditional on:" in text
+    assert "seed 13" in text
+    assert "linear_model" in text
+    assert "recoverlite-thresholds" in text
+    assert "decision convention" in text
